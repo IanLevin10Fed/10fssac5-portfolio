@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fund 5 Portfolio &amp; Pipeline — 10 Federal</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --red:         #C52127;
+  --brand:       #C52127;
+  --brand-2:     #F14F40;
+  --red-deep:    #980000;
+  --black:       #000000;
+  --gray-dark:   #2E2E2E;
+  --gray-mid:    #5C5C5C;
+  --gray-soft:   #8A8A8A;
+  --gray-light:  #F4F2EE;
+  --gray-border: #E4DFD6;
+  --line-2:      #EFEAE0;
+  --white:       #FFFFFF;
+  --green:       #1F6B36;
+  --green-tint:  #E2F1E4;
+  --red-tint:    #FBE5E5;
+  --shadow:      0 1px 2px rgba(28,27,25,.04), 0 4px 14px -4px rgba(28,27,25,.06);
+  --shadow-md:   0 2px 8px rgba(28,27,25,.06), 0 14px 32px -10px rgba(28,27,25,.10);
+  --radius:      6px;
+  --radius-card: 10px;
+  --font:        "Inter", "Helvetica Neue", Arial, sans-serif;
+  --mono:        "JetBrains Mono", ui-monospace, monospace;
+
+  /* deal stage ramp — cool-to-hot by proximity to close */
+  --s-uw:    #9AA3AB;
+  --s-loi:   #5C7B93;
+  --s-psa:   #2E5E7E;
+  --s-dd:    #C97A18;
+  --s-rofr:  #C52127;
+}
+
+html, body { height: 100%; }
+html { font-size: 14px; }
+body {
+  font-family: var(--font); color: var(--gray-dark);
+  background: var(--gray-light);
+  display: flex; flex-direction: column; min-height: 100%;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.hdr {
+  background: var(--black);
+  border-bottom: 3px solid var(--red);
+  padding: 0 20px;
+  display: flex; align-items: stretch; gap: 18px;
+  position: sticky; top: 0; z-index: 900;
+}
+.hdr-brand { display: flex; align-items: center; gap: 11px; padding: 11px 0; flex-shrink: 0; }
+.hdr-mark {
+  font-family: var(--font); font-weight: 800; font-size: 13px; letter-spacing: .10em;
+  color: var(--white); background: var(--red); padding: 4px 8px; border-radius: 3px;
+  line-height: 1;
+}
+.hdr h1 { color: var(--white); font-size: 15px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+.hdr-sub { color: rgba(255,255,255,.45); font-size: 12px; font-weight: 500; white-space: nowrap; }
+
+/* Tabs live in the header bar */
+.tabs { display: flex; align-items: stretch; gap: 2px; margin-left: 10px; }
+.tabs button {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--font); font-size: 12.5px; font-weight: 600;
+  color: rgba(255,255,255,.55); padding: 0 15px;
+  border-bottom: 3px solid transparent; margin-bottom: -3px;
+  display: flex; align-items: center; gap: 7px; transition: color .12s;
+  white-space: nowrap;
+}
+.tabs button:hover { color: rgba(255,255,255,.9); }
+.tabs button.active { color: var(--white); border-bottom-color: var(--red); }
+.tabs .tcount {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+  background: rgba(255,255,255,.13); color: rgba(255,255,255,.8);
+  padding: 2px 6px; border-radius: 20px; line-height: 1;
+}
+.tabs button.active .tcount { background: var(--red); color: #fff; }
+
+.hdr-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.hdr-updated {
+  font-size: 11px; color: rgba(255,255,255,.55); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.theme-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px; background: transparent; color: rgba(255,255,255,.7);
+  cursor: pointer; transition: color .15s, border-color .15s; flex-shrink: 0;
+}
+.theme-btn:hover { color: #fff; border-color: rgba(255,255,255,.55); }
+.icon-sun { display: none; }
+[data-theme="dark"] .icon-sun { display: block; }
+[data-theme="dark"] .icon-moon { display: none; }
+
+/* ── Filter bar ─────────────────────────────────────────────────────── */
+.filter-bar {
+  background: var(--white); border-bottom: 1px solid var(--gray-border);
+  padding: 9px 20px; display: flex; align-items: center; gap: 14px;
+  flex-wrap: wrap; position: sticky; top: 51px; z-index: 800;
+}
+.filter-section { display: flex; align-items: center; gap: 8px; }
+.filter-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--gray-soft);
+}
+.filter-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.filter-pills button {
+  appearance: none; border: 1px solid var(--gray-border); background: var(--white);
+  font-family: var(--font); font-size: 11.5px; font-weight: 600; color: var(--gray-mid);
+  padding: 4px 10px; border-radius: 20px; cursor: pointer; transition: all .12s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.filter-pills button:hover { border-color: var(--gray-soft); color: var(--gray-dark); }
+.filter-pills button.active { background: var(--black); border-color: var(--black); color: #fff; }
+.filter-pills button .swatch { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.filter-divider { width: 1px; height: 20px; background: var(--gray-border); }
+.filter-spacer { flex: 1; }
+.filter-reset {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--font); font-size: 11.5px; font-weight: 600; color: var(--brand);
+  padding: 4px 2px;
+}
+.filter-reset:hover { text-decoration: underline; }
+.search-box {
+  display: flex; align-items: center; gap: 6px; border: 1px solid var(--gray-border);
+  border-radius: var(--radius); padding: 4px 9px; background: var(--white);
+}
+.search-box:focus-within { border-color: var(--gray-soft); }
+.search-box input {
+  border: 0; outline: 0; font-family: var(--font); font-size: 12px; width: 168px;
+  background: transparent; color: var(--gray-dark);
+}
+.search-box svg { color: var(--gray-soft); flex-shrink: 0; }
+
+.toggle-wrap { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
+.toggle-wrap span { font-size: 11.5px; font-weight: 600; color: var(--gray-mid); }
+.toggle {
+  width: 32px; height: 18px; border-radius: 20px; background: var(--gray-border);
+  position: relative; transition: background .15s; flex-shrink: 0;
+}
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+  border-radius: 50%; background: var(--white); transition: transform .15s;
+  box-shadow: 0 1px 2px rgba(0,0,0,.2);
+}
+.toggle.on { background: var(--brand); }
+.toggle.on::after { transform: translateX(14px); }
+
+/* ── Page ───────────────────────────────────────────────────────────── */
+.page { padding: 16px 20px 26px; display: none; flex-direction: column; gap: 14px; flex: 1; }
+.page.active { display: flex; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.kpi {
+  background: var(--white); border: 1px solid var(--gray-border);
+  border-radius: var(--radius-card); padding: 12px 14px; box-shadow: var(--shadow);
+}
+.kpi-name {
+  font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--gray-soft); margin-bottom: 5px;
+}
+.kpi-value {
+  font-size: 26px; font-weight: 700; color: var(--brand); line-height: 1.05;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+}
+.kpi-sub { font-size: 11px; color: var(--gray-mid); margin-top: 4px; font-weight: 500; }
+
+.layout { display: grid; grid-template-columns: 400px 1fr; gap: 14px; min-height: 460px; }
+.card {
+  background: var(--white); border: 1px solid var(--gray-border);
+  border-radius: var(--radius-card); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.card-hd {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; border-bottom: 1px solid var(--line-2); flex-shrink: 0;
+}
+.card-hd h2 { font-size: 12.5px; font-weight: 700; color: var(--black); letter-spacing: -.01em; }
+.hint { font-size: 10.5px; color: var(--gray-soft); font-weight: 500; }
+.card-hd .spacer { flex: 1; }
+.legend { display: flex; gap: 10px; font-size: 10.5px; color: var(--gray-mid); font-weight: 600; }
+.legend > span { display: inline-flex; align-items: center; gap: 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+.card-body { padding: 12px 14px; overflow: auto; flex: 1; }
+.card-split { display: flex; flex-direction: column; }
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+.tbl-wrap { overflow: auto; flex: 1; }
+table.t { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.t thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--black); color: rgba(255,255,255,.92);
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  text-align: right; padding: 8px 10px; white-space: nowrap; cursor: pointer;
+  user-select: none;
+}
+table.t thead th:first-child, table.t thead th.tl { text-align: left; }
+table.t thead th:hover { background: #1c1c1c; }
+table.t thead th .arw { opacity: .35; font-size: 9px; margin-left: 3px; }
+table.t thead th.sorted .arw { opacity: 1; color: var(--brand-2); }
+table.t tbody td {
+  padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--line-2);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+table.t tbody td:first-child, table.t tbody td.tl { text-align: left; }
+table.t tbody tr:nth-child(even of .drow) { background: rgba(0,0,0,.014); }
+table.t tbody tr.drow { cursor: pointer; }
+table.t tbody tr.drow:hover { background: var(--red-tint); }
+table.t tbody tr.drow.sel { background: var(--red-tint); box-shadow: inset 3px 0 0 var(--brand); }
+table.t tfoot td {
+  padding: 8px 10px; text-align: right; font-weight: 700; font-size: 11.5px;
+  border-top: 2px solid var(--gray-dark); font-variant-numeric: tabular-nums;
+  background: var(--white); position: sticky; bottom: 0;
+}
+table.t tfoot td:first-child { text-align: left; }
+.nm { font-weight: 600; color: var(--black); }
+.sub { font-size: 10.5px; color: var(--gray-soft); font-weight: 500; }
+.mono { font-family: var(--mono); font-size: 11px; }
+
+.tag {
+  display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .04em;
+  padding: 2px 7px; border-radius: 20px; color: #fff; text-transform: uppercase;
+  white-space: nowrap;
+}
+.tag.rofr { background: var(--s-rofr); }
+.tag.dd   { background: var(--s-dd); }
+.tag.psa  { background: var(--s-psa); }
+.tag.loi  { background: var(--s-loi); }
+.tag.uw   { background: var(--s-uw); }
+.chip {
+  display: inline-block; font-size: 9.5px; font-weight: 700; padding: 1.5px 6px;
+  border-radius: 4px; border: 1px solid var(--gray-border); color: var(--gray-mid);
+  background: var(--gray-light);
+}
+
+/* expandable demographics row */
+tr.demo-row > td { padding: 0 !important; border-bottom: 1px solid var(--line-2); }
+.demo-panel { padding: 12px 14px 14px 30px; background: rgba(0,0,0,.022); }
+.demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px,1fr)); gap: 10px; }
+.demo-box {
+  background: var(--white); border: 1px solid var(--gray-border);
+  border-radius: var(--radius); padding: 9px 11px;
+}
+.demo-box h4 {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--gray-soft); margin-bottom: 6px;
+}
+.demo-rings { display: flex; gap: 12px; }
+.demo-ring { flex: 1; }
+.demo-ring .r { font-size: 9px; font-weight: 700; color: var(--gray-soft); letter-spacing: .04em; }
+.demo-ring .v {
+  font-size: 13px; font-weight: 700; color: var(--gray-dark);
+  font-variant-numeric: tabular-nums; line-height: 1.2;
+}
+.demo-meta { margin-top: 10px; font-size: 11px; color: var(--gray-mid); }
+.demo-meta b { color: var(--gray-dark); font-weight: 600; }
+.no-demo { font-size: 11.5px; color: var(--gray-soft); font-style: italic; padding: 4px 0; }
+
+/* ── Map ────────────────────────────────────────────────────────────── */
+.map-wrap { position: relative; flex: 1; min-height: 380px; }
+#map-reo, #map-pipe { position: absolute; inset: 0; }
+.leaflet-container { font-family: var(--font); background: var(--gray-light); }
+.leaflet-popup-content-wrapper { border-radius: var(--radius-card); padding: 0; box-shadow: var(--shadow-md); }
+.leaflet-popup-content { margin: 0; min-width: 268px; }
+.leaflet-popup-tip { background: var(--white); }
+.pop { padding: 0; }
+.pop-hd { padding: 10px 13px 9px; border-bottom: 1px solid var(--line-2); }
+.pop-hd .t { font-size: 13px; font-weight: 700; color: var(--black); line-height: 1.25; }
+.pop-hd .a { font-size: 11px; color: var(--gray-mid); margin-top: 3px; }
+.pop-bd { padding: 9px 13px 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px; }
+.pop-bd .k { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--gray-soft); }
+.pop-bd .v { font-size: 12.5px; font-weight: 700; color: var(--gray-dark); font-variant-numeric: tabular-nums; }
+.pop-ft { padding: 7px 13px 9px; border-top: 1px solid var(--line-2); font-size: 10.5px; color: var(--gray-soft); }
+
+.map-controls { position: absolute; top: 10px; right: 10px; z-index: 500; display: flex; gap: 6px; }
+.map-pill-group {
+  display: inline-flex; background: var(--white); border: 1px solid var(--gray-border);
+  border-radius: 20px; overflow: hidden; box-shadow: var(--shadow);
+}
+.map-pill-group button {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--font); font-size: 11px; font-weight: 600; color: var(--gray-mid);
+  padding: 5px 11px;
+}
+.map-pill-group button.active { background: var(--red); color: #fff; }
+.marker-dot {
+  border-radius: 50%; border: 2.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+.marker-dot.hollow { background: transparent !important; border-style: dashed; border-width: 2.5px; }
+.cluster-donut-wrap { background: transparent; border: 0; }
+.cluster-donut { position: relative; }
+.cluster-donut .count {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #1f1f1f; font-family: var(--font);
+}
+
+/* ── Bar rows (stage / state summaries) ─────────────────────────────── */
+.bar-list { display: flex; flex-direction: column; gap: 9px; }
+.bar-item { display: grid; grid-template-columns: 96px 1fr auto; align-items: center; gap: 10px; cursor: pointer; }
+.bar-item:hover .bar-label { color: var(--black); }
+.bar-label { font-size: 11.5px; font-weight: 600; color: var(--gray-mid); display: flex; align-items: center; gap: 6px; }
+.bar-track { height: 16px; background: var(--gray-light); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+.bar-val { font-size: 11.5px; font-weight: 700; color: var(--gray-dark); font-variant-numeric: tabular-nums; min-width: 74px; text-align: right; }
+.bar-sub { font-size: 10px; color: var(--gray-soft); font-weight: 500; }
+
+.foot {
+  padding: 4px 20px 18px; font-size: 10.5px; color: var(--gray-soft); line-height: 1.6;
+}
+.foot b { color: var(--gray-mid); font-weight: 600; }
+
+/* ── Dark mode ──────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --gray-dark:   #C8C2B6;
+  --gray-mid:    #9A9284;
+  --gray-soft:   #7E7566;
+  --gray-light:  #18160F;
+  --gray-border: #40392D;
+  --line-2:      #322D24;
+  --white:       #27241D;
+  --black:       #0D0C08;
+  --red-tint:    rgba(197,33,39,.16);
+  --shadow:      none;
+  --shadow-md:   0 10px 30px rgba(0,0,0,.5);
+}
+[data-theme="dark"] .hdr { background: #000; }
+[data-theme="dark"] table.t thead th { background: #100E0A; color: #C8C2B6; }
+[data-theme="dark"] table.t thead th:hover { background: #1a1712; }
+[data-theme="dark"] .nm { color: #F2EDE4; }
+[data-theme="dark"] .card-hd h2 { color: #F2EDE4; }
+[data-theme="dark"] table.t tbody tr:nth-child(even of .drow) { background: rgba(255,255,255,.018); }
+[data-theme="dark"] .demo-panel { background: rgba(255,255,255,.025); }
+[data-theme="dark"] .chip { background: #201D17; }
+[data-theme="dark"] .filter-bar { background: #27241D; }
+[data-theme="dark"] .filter-pills button { background: #201D17; }
+[data-theme="dark"] .filter-pills button.active { background: var(--red); border-color: var(--red); }
+[data-theme="dark"] .map-pill-group { background: #27241D; }
+[data-theme="dark"] .search-box { background: #201D17; }
+[data-theme="dark"] .cluster-donut .count { color: #F2EDE4; }
+[data-theme="dark"] .leaflet-popup-content-wrapper,
+[data-theme="dark"] .leaflet-popup-tip { background: #27241D; color: #C8C2B6; }
+[data-theme="dark"] .leaflet-container { background: #18160F; }
+
+@media (max-width: 1180px) {
+  .kpi-row { grid-template-columns: repeat(3, 1fr); }
+  .layout { grid-template-columns: 1fr; grid-template-rows: auto minmax(340px, 46vh); }
+}
+@media (max-width: 700px) {
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .kpi-value { font-size: 22px; }
+  .hdr { flex-wrap: wrap; gap: 8px; }
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-brand">
+    <span class="hdr-mark">10 FEDERAL</span>
+    <h1>Fund 5 Portfolio &amp; Pipeline</h1>
+    <span class="hdr-sub">10FSSAC5</span>
+  </div>
+  <div class="tabs" id="tabs">
+    <button class="active" data-tab="reo" type="button">Owned <span class="tcount" id="tc-reo">—</span></button>
+    <button data-tab="pipe" type="button">Pipeline <span class="tcount" id="tc-pipe">—</span></button>
+  </div>
+  <div class="hdr-right">
+    <span class="hdr-updated" id="refreshed">—</span>
+    <button class="theme-btn" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark/light mode">
+      <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"></circle>
+        <line x1="12" y1="2" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="22"></line>
+        <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"></line><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"></line>
+        <line x1="2" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="22" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"></line><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"></line>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════ OWNED FILTERS ═══════════ -->
+<div class="filter-bar" id="fb-reo">
+  <div class="filter-section">
+    <span class="filter-label">State</span>
+    <div class="filter-pills" id="reo-state-pills"></div>
+  </div>
+  <div class="filter-divider"></div>
+  <div class="filter-section">
+    <span class="filter-label">Lender</span>
+    <div class="filter-pills" id="reo-lender-pills"></div>
+  </div>
+  <button class="filter-reset" id="reo-reset" type="button">Reset</button>
+  <div class="filter-spacer"></div>
+  <div class="search-box">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="20" y1="20" x2="16.5" y2="16.5"></line></svg>
+    <input type="text" id="reo-search" placeholder="Search store, address…" autocomplete="off">
+  </div>
+</div>
+
+<!-- ═══════════ PIPELINE FILTERS ═══════════ -->
+<div class="filter-bar" id="fb-pipe" style="display:none">
+  <div class="filter-section">
+    <span class="filter-label">Stage</span>
+    <div class="filter-pills" id="pipe-stage-pills"></div>
+  </div>
+  <div class="filter-divider"></div>
+  <div class="filter-section">
+    <span class="filter-label">State</span>
+    <div class="filter-pills" id="pipe-state-pills"></div>
+  </div>
+  <button class="filter-reset" id="pipe-reset" type="button">Reset</button>
+  <div class="filter-spacer"></div>
+  <div class="search-box">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="20" y1="20" x2="16.5" y2="16.5"></line></svg>
+    <input type="text" id="pipe-search" placeholder="Search deal, city, market…" autocomplete="off">
+  </div>
+</div>
+
+<!-- ═══════════ TAB 1 — OWNED ═══════════ -->
+<div class="page active" id="tab-reo">
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-name">Properties</div><div class="kpi-value" id="r-k-props">—</div><div class="kpi-sub" id="r-k-props-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">States</div><div class="kpi-value" id="r-k-states">—</div><div class="kpi-sub" id="r-k-states-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">Units</div><div class="kpi-value" id="r-k-units">—</div><div class="kpi-sub" id="r-k-units-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">Net Rentable SF</div><div class="kpi-value" id="r-k-sf">—</div><div class="kpi-sub" id="r-k-sf-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">Purchase Price</div><div class="kpi-value" id="r-k-pp">—</div><div class="kpi-sub" id="r-k-pp-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">Blended $/SF</div><div class="kpi-value" id="r-k-psf">—</div><div class="kpi-sub" id="r-k-psf-s">&nbsp;</div></div>
+  </div>
+
+  <div class="layout">
+    <div class="card">
+      <div class="card-hd"><h2>Basis by state</h2><div class="spacer"></div><span class="hint" id="r-state-hint"></span></div>
+      <div class="card-body"><div class="bar-list" id="r-state-bars"></div></div>
+      <div class="card-hd" style="border-top:1px solid var(--line-2)"><h2>Capital deployed</h2><div class="spacer"></div><span class="hint">cumulative purchase price</span></div>
+      <div class="card-body" style="flex:0 0 auto"><div style="height:132px;position:relative"><canvas id="r-chart"></canvas></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <h2>Owned portfolio map</h2>
+        <span class="hint">click a pin or a table row</span>
+        <div class="spacer"></div>
+        <span class="legend"><span><span class="dot" style="background:var(--red)"></span>Fund 5 owned</span></span>
+      </div>
+      <div class="map-wrap">
+        <div id="map-reo"></div>
+        <div class="map-controls">
+          <div class="map-pill-group" id="bm-reo">
+            <button class="active" data-layer="map" type="button">Map</button>
+            <button data-layer="satellite" type="button">Satellite</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><h2>Owned properties</h2><div class="spacer"></div><span class="hint" id="r-tbl-hint"></span></div>
+    <div class="tbl-wrap">
+      <table class="t" id="r-table">
+        <thead><tr>
+          <th class="tl" data-k="store">Store<span class="arw">▲</span></th>
+          <th class="tl" data-k="short">Property<span class="arw">▲</span></th>
+          <th class="tl" data-k="state">ST<span class="arw">▲</span></th>
+          <th data-k="acq">Closed<span class="arw">▲</span></th>
+          <th data-k="price">Purchase price<span class="arw">▲</span></th>
+          <th data-k="psf">$/SF<span class="arw">▲</span></th>
+          <th data-k="sf">Net rentable SF<span class="arw">▲</span></th>
+          <th data-k="units">Units<span class="arw">▲</span></th>
+          <th data-k="avgunit">Avg unit SF<span class="arw">▲</span></th>
+          <th class="tl" data-k="lender">Lender<span class="arw">▲</span></th>
+        </tr></thead>
+        <tbody id="r-tbody"></tbody>
+        <tfoot id="r-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB 2 — PIPELINE ═══════════ -->
+<div class="page" id="tab-pipe">
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-name">Deals tracked</div><div class="kpi-value" id="p-k-deals">—</div><div class="kpi-sub" id="p-k-deals-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">Properties</div><div class="kpi-value" id="p-k-props">—</div><div class="kpi-sub" id="p-k-props-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">Asking price</div><div class="kpi-value" id="p-k-ask">—</div><div class="kpi-sub" id="p-k-ask-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">Net Rentable SF</div><div class="kpi-value" id="p-k-sf">—</div><div class="kpi-sub" id="p-k-sf-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">Units</div><div class="kpi-value" id="p-k-units">—</div><div class="kpi-sub" id="p-k-units-s">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-name">Blended $/SF</div><div class="kpi-value" id="p-k-psf">—</div><div class="kpi-sub" id="p-k-psf-s">&nbsp;</div></div>
+  </div>
+
+  <div class="layout">
+    <div class="card">
+      <div class="card-hd"><h2>Pipeline by stage</h2><div class="spacer"></div><span class="hint">click to filter</span></div>
+      <div class="card-body" style="flex:0 0 auto"><div class="bar-list" id="p-stage-bars"></div></div>
+      <div class="card-hd" style="border-top:1px solid var(--line-2)"><h2>Top states by asking price</h2><div class="spacer"></div><span class="hint" id="p-state-hint"></span></div>
+      <div class="card-body"><div class="bar-list" id="p-state-bars"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <h2>Pipeline map</h2>
+        <span class="hint">pin size = asking price</span>
+        <div class="spacer"></div>
+        <span class="legend" id="p-legend"></span>
+      </div>
+      <div class="map-wrap">
+        <div id="map-pipe"></div>
+        <div class="map-controls">
+          <div class="map-pill-group" id="bm-pipe">
+            <button class="active" data-layer="map" type="button">Map</button>
+            <button data-layer="satellite" type="button">Satellite</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><h2>Deals</h2><span class="hint">click a row for trade-area demographics</span><div class="spacer"></div><span class="hint" id="p-tbl-hint"></span></div>
+    <div class="tbl-wrap">
+      <table class="t" id="p-table">
+        <thead><tr>
+          <th class="tl" data-k="label">Deal<span class="arw">▲</span></th>
+          <th class="tl" data-k="stageRank">Stage<span class="arw">▲</span></th>
+          <th class="tl" data-k="market">Market<span class="arw">▲</span></th>
+          <th class="tl" data-k="state">ST<span class="arw">▲</span></th>
+          <th data-k="props">Props<span class="arw">▲</span></th>
+          <th data-k="ask">Asking price<span class="arw">▲</span></th>
+          <th data-k="psf">$/SF<span class="arw">▲</span></th>
+          <th data-k="sf">Net rentable SF<span class="arw">▲</span></th>
+          <th data-k="units">Units<span class="arw">▲</span></th>
+          <th data-k="pop5">Pop 5-mi<span class="arw">▲</span></th>
+          <th data-k="hhi5">HHI 5-mi<span class="arw">▲</span></th>
+          <th data-k="adj5">Adj SF/cap 5-mi<span class="arw">▲</span></th>
+        </tr></thead>
+        <tbody id="p-tbody"></tbody>
+        <tfoot id="p-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="foot" id="foot"></div>
+
+<script id="report-data" type="application/json">
+{"snapshotLabel":"As of August 20, 2026","generatedAt":"2026-08-20T18:39:36Z","reo":[{"store":1103,"fund":"10FSSAC5","property":"10FSS- 3802 Angier Avenue, Durham, NC","status":"Active","acq":"2017-01-30","price":2450000,"psf":113.82113821138212,"sf":21525,"units":183,"lender":"First Horizon Bank","lat":35.985944,"lng":-78.887982,"short":"Angier Ave \u00b7 Durham, NC","state":"NC","address":"3802 Angier Ave, Durham, NC"},{"store":1104,"fund":"10FSSAC5","property":"10FSS - 577 Veterans Pkwy, Clayton, NC 27520","status":"Active","acq":"2025-08-26","price":2208000,"psf":171.1627906976744,"sf":12900,"units":142,"lender":"First Horizon Bank","lat":35.6411788,"lng":-78.4736843,"short":"Veterans Pkwy \u00b7 Clayton, NC","state":"NC","address":"577 Veterans Pkwy, Clayton, NC 27520"},{"store":1105,"fund":"10FSSAC5","property":"10FSS - 931Trinity Rd, Raleigh, NC 27607","status":"Active","acq":"2025-08-26","price":2592000,"psf":92.57142857142857,"sf":28000,"units":168,"lender":"First Horizon Bank","lat":35.800281,"lng":-78.729137,"short":"Trinity Rd \u00b7 Raleigh, NC","state":"NC","address":"931 Trinity Rd, Raleigh, NC 27607"},{"store":1106,"fund":"10FSSAC5","property":"10FSS - 136 Old Gray Station Rd, Gray, TN","status":"Active","acq":"2025-10-06","price":2500000,"psf":91.57509157509158,"sf":27300,"units":167,"lender":"First Horizon Bank","lat":36.4075241,"lng":-82.4583923,"short":"Old Gray Station \u00b7 Gray, TN","state":"TN","address":"136 Old Gray Station Rd, Gray, TN"},{"store":1097,"fund":"10FSSAC5","property":"10FSS - 1507 Park Lane. Georgetown, TX","status":"Active","acq":"2025-11-13","price":800000,"psf":80,"sf":10000,"units":64,"lender":"First Horizon Bank","lat":30.6531327,"lng":-97.6797608,"short":"Park Lane \u00b7 Georgetown, TX","state":"TX","address":"1507 Park Ln, Georgetown, TX"},{"store":1098,"fund":"10FSSAC5","property":"10FSS - 4401 Williams Drive, Georgetown. TX","status":"Active","acq":"2025-11-13","price":2800000,"psf":135.2657004830918,"sf":20700,"units":163,"lender":"First Horizon Bank","lat":30.6819121,"lng":-97.7146329,"short":"Williams Dr \u00b7 Georgetown, TX","state":"TX","address":"4401 Williams Dr, Georgetown, TX"},{"store":1107,"fund":"10FSSAC5","property":"10FSS - 4009 Ovilla Rd, Waxahachie, TX","status":"Active","acq":"2025-12-05","price":6550000,"psf":67.60941370767961,"sf":96880,"units":181,"lender":"First Horizon Bank","lat":32.4300089,"lng":-96.8736129,"short":"Ovilla Rd \u00b7 Waxahachie, TX","state":"TX","address":"4009 Ovilla Rd, Waxahachie, TX"},{"store":1108,"fund":"10FSSAC5","property":"10FSS - 503 Northgate Drive, Jacksonville, AR   72076","status":"Active","acq":"2026-01-21","price":4600000,"psf":64.2009769713887,"sf":71650,"units":521,"lender":"Live Oak Bank","lat":34.8826633,"lng":-92.1042191,"short":"Northgate Dr \u00b7 Jacksonville, AR","state":"AR","address":"503 Northgate Dr, Jacksonville, AR 72076"},{"store":1109,"fund":"10FSSAC5","property":"10FSS - 6910 Alcoa Road, Benton, AR  72015","status":"Active","acq":"2026-01-21","price":2687000,"psf":50.143694248497745,"sf":53586,"units":327,"lender":"Live Oak Bank","lat":34.5997811,"lng":-92.5344783,"short":"Alcoa Rd \u00b7 Benton, AR","state":"AR","address":"6910 Alcoa Rd, Benton, AR 72015"},{"store":1110,"fund":"10FSSAC5","property":"10FSS - 6140 Remount Road, North Little Rock, AR  72118","status":"Active","acq":"2026-01-21","price":3006500,"psf":62.54420636571666,"sf":48070,"units":346,"lender":"Live Oak Bank","lat":34.8336512,"lng":-92.2537796,"short":"Remount Rd \u00b7 N. Little Rock, AR","state":"AR","address":"6140 Remount Rd, North Little Rock, AR 72118"},{"store":1111,"fund":"10FSSAC5","property":"10FSS - 103 Spriggs Road, North Little Rock, AR  72118","status":"Active","acq":"2026-01-21","price":3006500,"psf":73.96063960639606,"sf":40650,"units":303,"lender":"Live Oak Bank","lat":34.8257181,"lng":-92.2624529,"short":"Spriggs Rd \u00b7 N. Little Rock, AR","state":"AR","address":"103 Spriggs Rd, North Little Rock, AR 72118"},{"store":1112,"fund":"10FSSAC5","property":"10FSS - 3530 Salem Road, Benton, AR  72019","status":"Active","acq":"2026-01-21","price":3800000,"psf":70.63197026022304,"sf":53800,"units":422,"lender":"Live Oak Bank","lat":34.615967,"lng":-92.5381,"short":"Salem Rd \u00b7 Benton, AR","state":"AR","address":"3530 Salem Rd, Benton, AR 72019"},{"store":1117,"fund":"10FSSAC5","property":"10FSS - 1050 W Hwy 199, Springtown, TX 76082","status":"Active","acq":"2026-08-19","price":7411675,"psf":70.72208969465649,"sf":104800,"units":627,"lender":"TBD","lat":32.96778,"lng":-97.70113,"short":"W Hwy 199 \u00b7 Springtown, TX","state":"TX","address":"1050 W Hwy 199, Springtown, TX 76082"},{"store":1118,"fund":"10FSSAC5","property":"10FSS - 11400 FM 730 N & 114 E Reno Rd, Azle, TX 76020","status":"Active","acq":"2026-08-19","price":2813325,"psf":69.67124814264487,"sf":40380,"units":286,"lender":"TBD","lat":32.93527,"lng":-97.54322,"short":"FM 730 N & E Reno \u00b7 Azle, TX","state":"TX","address":"11400 FM 730 N & 114 E Reno Rd, Azle, TX 76020"},{"store":1119,"fund":"10FSSAC5","property":"10FSS - 1250 Sandy Beach Rd, Azle, TX 76020","status":"Active","acq":"2026-08-19","price":5350000,"psf":59.19778699861688,"sf":90375,"units":361,"lender":"TBD","lat":32.92759,"lng":-97.52344,"short":"Sandy Beach Rd \u00b7 Azle, TX","state":"TX","address":"1250 Sandy Beach Rd, Azle, TX 76020"}],"pipeline":[{"num":1,"name":"Deal 1","address":"1626 Prickett \u00b7 8007 Counts Massie","status":"07. ROFR","market":"Little Rock","city":"Little Rock","state":"AR","props":2,"ask":10300000,"sf":175768,"psf":58.599972691274864,"units":670,"pop":[45013,67107,189945],"popgr":[0.0147,0.0158,0.0158],"hhi":[52793,91832,81497],"sfcap":[7.74,15.19,13.11],"adjsfcap":[1.85,3.91,2.71],"lat":34.7264,"lng":-92.4448,"prec":"C","stage":"ROFR","multi":true},{"num":5,"name":"Deal 2","address":"1760 Bostian Rd, China Grove NC 28023","status":"04. In DD","market":"Charlotte","city":"China Grove","state":"NC","props":1,"ask":3781000,"sf":39800,"psf":95,"units":321,"pop":[27167,63043,125668],"popgr":[0.03154562520705273,0.035,0.03611102269471944],"hhi":[57012,58448,65256],"sfcap":[5.94,4.18,6.18],"adjsfcap":[null,null,null],"lat":35.5704,"lng":-80.582,"prec":"C","stage":"In DD","multi":false},{"num":10,"name":"Deal 3","address":"700 East Main St, Duncan, SC 29334","status":"04. In DD","market":"Greenville","city":"Duncan","state":"SC","props":1,"ask":7250000,"sf":70000,"psf":103.57142857142857,"units":250,"pop":[25004,54454,154581],"popgr":[0.064071,0.06411,0.061055],"hhi":[65730,71050,74371],"sfcap":[5.3,5.08,7.74],"adjsfcap":[1.13,1.45,3.69],"lat":34.9382,"lng":-82.1387,"prec":"C","stage":"In DD","multi":false},{"num":11,"name":"Deal 4","address":"Various","status":"03. PSA","market":"Various","city":"Various","state":"NC, SC","props":7,"ask":35500000,"sf":328916,"psf":107.93029223266731,"units":2864,"pop":[null,null,null],"popgr":[null,null,null],"hhi":[null,null,null],"sfcap":[null,null,null],"adjsfcap":[null,null,null],"lat":35.2,"lng":-80.6,"prec":"C","stage":"PSA","multi":true},{"num":12,"name":"Deal 5","address":"1650 S Meadows Dr, Granbury, TX 76048","status":"03. PSA","market":"DFW","city":"Granbury","state":"TX","props":1,"ask":12000000,"sf":135935,"psf":88.27748556295288,"units":696,"pop":[17087,30369,49906],"popgr":[0.030432492538186917,0.03088675952451503,0.03135895483508988],"hhi":[62549,75756,80006],"sfcap":[22.94,24.59,23.97],"adjsfcap":[0,2.653692910533768,2.908528032701479],"lat":32.4421,"lng":-97.7942,"prec":"C","stage":"PSA","multi":false},{"num":13,"name":"Deal 6","address":"5521 Russellville Rd, Bowling Green, KY 42101","status":"02. LOI","market":"Bowling Green","city":"Bowling Green","state":"KY","props":1,"ask":6100000,"sf":95090,"psf":64.14975286570618,"units":689,"pop":[28770,66737,111735],"popgr":[0.077928,0.072812,0.074376],"hhi":[68743,63157,65820],"sfcap":[17.06,11.71,11.28],"adjsfcap":[5.41,5,4.45],"lat":36.9685,"lng":-86.4808,"prec":"C","stage":"LOI","multi":false},{"num":14,"name":"Deal 7","address":"1408 Bowling Ln, Griffin, GA 30223 \u00b7 4268 Winters Chapel Rd, Atlanta, GA 30360 \u00b7 5361 Long Branch Rd, Dahlonega, GA 30533","status":"02. LOI","market":"Atlanta","city":"Griffin, Dahlonega, Doraville","state":"GA","props":3,"ask":8500000,"sf":140562,"psf":60.47153569243466,"units":978,"pop":[30760,54766,75801],"popgr":[0.0223,0.022,0.0243],"hhi":[49145,60453,63879],"sfcap":[14.57,12.33,9.77],"adjsfcap":[7.19,4.3,5.25],"lat":33.2468,"lng":-84.2641,"prec":"C","stage":"LOI","multi":true},{"num":15,"name":"Deal 8","address":"7770 Cumming Hwy, Canton, GA","status":"02. LOI","market":"Atlanta","city":"Canton","state":"GA","props":1,"ask":7750000,"sf":104110,"psf":74.44049562962252,"units":377,"pop":[14876,33195,110178],"popgr":[0.04537,0.04564,0.04606],"hhi":[137420,115241,118467],"sfcap":[10.03,7.6,5.29],"adjsfcap":[4.755982791072869,4.84575990359994,3.6839477935704044],"lat":34.2367,"lng":-84.4908,"prec":"C","stage":"LOI","multi":false},{"num":16,"name":"Deal 9","address":"3008 Hwy. 124 West, Jefferson, GA, 30549","status":"02. LOI","market":"Atlanta","city":"Jefferson","state":"GA","props":1,"ask":8100000,"sf":104200,"psf":77.73512476007677,"units":760,"pop":[null,null,null],"popgr":[null,null,null],"hhi":[null,null,null],"sfcap":[null,null,null],"adjsfcap":[null,null,null],"lat":34.1173,"lng":-83.5721,"prec":"C","stage":"LOI","multi":false},{"num":17,"name":"Deal 10","address":"3288 BC Grant Road, Cornelia, GA 30531 \u00b7 1020 Appalachian Highway, Blue Ridge, GA 30513 \u00b7 5171 Appalachian Highway, Blue Ridge, GA 30513","status":"02. LOI","market":"Atlanta","city":"Cornelia, Blue Ridge","state":"GA","props":3,"ask":8250000,"sf":136463,"psf":60.45594776606113,"units":982,"pop":[4534,7142,14530],"popgr":[-0.00441,-0.00574,-0.00165],"hhi":[55540,52772,57942],"sfcap":[18.86,39.42,28.35],"adjsfcap":[0,0,0],"lat":34.5148,"lng":-83.5271,"prec":"C","stage":"LOI","multi":true},{"num":18,"name":"Deal 11","address":"Various","status":"02. LOI","market":"Atlanta","city":"Macon","state":"GA","props":2,"ask":14500000,"sf":150951,"psf":96.05766109532232,"units":1279,"pop":[null,null,null],"popgr":[null,null,null],"hhi":[null,null,null],"sfcap":[null,null,null],"adjsfcap":[null,null,null],"lat":32.8407,"lng":-83.6324,"prec":"C","stage":"LOI","multi":true},{"num":19,"name":"Deal 12","address":"4494 US Hwy 220 BUS Asheboro, NC 27205","status":"02. LOI","market":"Charlotte","city":"Ashboro","state":"NC","props":1,"ask":3700000,"sf":41000,"psf":90.2439024390244,"units":251,"pop":[16673,34152,66524],"popgr":[0.018173094224194886,0.018037011009604198,0.017843184414647384],"hhi":[62111,55345,54571],"sfcap":[2.98,5.38,5.19],"adjsfcap":[0,2.024156711173577,1.5133635980999338],"lat":35.7079,"lng":-79.8136,"prec":"C","stage":"LOI","multi":false},{"num":20,"name":"Deal 13","address":"2245 Old Wilkesboro Rd Salisbury NC","status":"02. LOI","market":"Charlotte","city":"Salisbury","state":"NC","props":1,"ask":800000,"sf":26800,"psf":29.850746268656717,"units":132,"pop":[29172,57900,84638],"popgr":[0.026258055669820424,0.02677029360967187,0.027056404924501898],"hhi":[58576,61174,63503],"sfcap":[13.52,9.05,6.88],"adjsfcap":[7.8122171945701355,5.193506044905009,3.552824972234694],"lat":35.6709,"lng":-80.4742,"prec":"C","stage":"LOI","multi":false},{"num":21,"name":"Deal 14","address":"112 W Seminary Ave, Durham NC  27701 \u00b7 6401 Town Center Drive, Raleigh NC  27616","status":"02. LOI","market":"Raleigh","city":"Durham","state":"NC","props":2,"ask":18000000,"sf":131015,"psf":137.38884860512155,"units":1386,"pop":[99739,203065,325225],"popgr":[0.06530043413308739,0.06905670598084357,0.06897686217234233],"hhi":[59842,69662,80790],"sfcap":[6.59,10.24,8.71],"adjsfcap":[5.260529983256299,7.669288158963878,6.663623645168729],"lat":35.994,"lng":-78.8986,"prec":"C","stage":"LOI","multi":true},{"num":22,"name":"Deal 15","address":"4957 S Main St, Cowpens, SC 29330","status":"02. LOI","market":"Spartanburg","city":"Cowpens","state":"SC","props":1,"ask":1850000,"sf":26670,"psf":69.3663292088489,"units":250,"pop":[11941,31042,76407],"popgr":[0.06331128046227286,0.05798595451324018,0.05715444919968071],"hhi":[58664,65430,63440],"sfcap":[4.09,10.4,10.91],"adjsfcap":[0,6.542941820758972,8.071786616409492],"lat":35.00664,"lng":-81.81419,"prec":"E","stage":"LOI","multi":false},{"num":23,"name":"Deal 16","address":"607 Blountville Hwy, Bristol, TN 37620 \u00b7 1529 W Highway 11E, New Market, TN 37820 \u00b7 2110 Golf Club Ln, Clarksville, TN 37043 \u00b7 5253 TN-126, Blountville, TN 37617","status":"02. LOI","market":"Various","city":"Various","state":"TN","props":4,"ask":7800000,"sf":130354,"psf":59.83705908526014,"units":843,"pop":[19600,51298,72511],"popgr":[-0.00673469387755099,-0.008109477952356836,-0.007143743707851202],"hhi":[44969,52577,56323],"sfcap":[21.75,11.57,12.1],"adjsfcap":[12.301530612244898,5.582537330890093,4.4684392712829775],"lat":36.5951,"lng":-82.1887,"prec":"C","stage":"LOI","multi":true},{"num":24,"name":"Deal 17","address":"4475 S Chadbourne St, San Angelo, TX 76905","status":"01. Underwriting","market":"San Angelo","city":"San Angelo","state":"TX","props":1,"ask":3000000,"sf":24100,"psf":124.48132780082987,"units":176,"pop":[25729,73393,101500],"popgr":[0.01667,0.01732,0.01753],"hhi":[57430,63280,64285],"sfcap":[16.73,15.38,18.57],"adjsfcap":[3.33,2.03,3.21],"lat":31.4638,"lng":-100.437,"prec":"C","stage":"Underwriting","multi":false},{"num":25,"name":"Deal 18","address":"6211 Williams Dr, Georgetown, TX 78633","status":"01. Underwriting","market":"Austin","city":"Georgetown","state":"TX","props":1,"ask":4830000,"sf":104835,"psf":46.07239948490485,"units":517,"pop":[20966,42537,103972],"popgr":[0.0854,0.0851,0.084],"hhi":[106227,102283,106608],"sfcap":[8.62,11.85,13.51],"adjsfcap":[3.45,7.29,4.94],"lat":30.679,"lng":-97.744,"prec":"C","stage":"Underwriting","multi":false},{"num":26,"name":"Deal 19","address":"4 N Kings Rd, Greenville, SC 29605","status":"01. Underwriting","market":"Greenville","city":"Greenville","state":"SC","props":1,"ask":3511500,"sf":51140,"psf":68.66445052796246,"units":407,"pop":[53075,149436,334637],"popgr":[0.0491,0.048,0.0481],"hhi":[78146,68922,73661],"sfcap":[6.55,10.42,10.25],"adjsfcap":[2.9,6.51,5.23],"lat":34.8526,"lng":-82.394,"prec":"C","stage":"Underwriting","multi":false},{"num":27,"name":"Deal 20","address":"2836 Hagers Ct, Denver, NC","status":"01. Underwriting","market":"Charlotte","city":"Denver","state":"NC","props":1,"ask":4400000,"sf":42540,"psf":103.43206393982135,"units":240,"pop":[18307,37963,101464],"popgr":[0.0456,0.0466,0.0517],"hhi":[105727,126188,115334],"sfcap":[21.07,20.12,17.03],"adjsfcap":[5.45,9.88,8.17],"lat":35.5296,"lng":-81.0298,"prec":"C","stage":"Underwriting","multi":false},{"num":28,"name":"Deal 21","address":"14001 NC-50, Surf City, NC 28445","status":"01. Underwriting","market":"Wilmington","city":"Surf City","state":"NC","props":1,"ask":7189000,"sf":61209,"psf":117.4500481955268,"units":450,"pop":[7414,12619,31251],"popgr":[0.0587,0.0578,0.0578],"hhi":[79347,85179,86084],"sfcap":[16.05,21.2,12.45],"adjsfcap":[9.42,5.54,2.24],"lat":34.4285,"lng":-77.5461,"prec":"C","stage":"Underwriting","multi":false},{"num":29,"name":"Deal 22","address":"3000 NE Main St, Ennis, TX 75119","status":"01. Underwriting","market":"DFW","city":"Ennis","state":"TX","props":1,"ask":3500000,"sf":35100,"psf":99.71509971509971,"units":249,"pop":[20825,28687,37838],"popgr":[0.0826,0.0825,0.0825],"hhi":[71267,73753,75622],"sfcap":[17.28,13.68,13.74],"adjsfcap":[0,0,0],"lat":32.3293,"lng":-96.6252,"prec":"C","stage":"Underwriting","multi":false},{"num":30,"name":"Deal 23","address":"19 Ashland Ave, Fairview Heights, IL 62208 \u00b7 653 Carlyle Ave, Belleville, IL 62221","status":"01. Underwriting","market":"St. Louis","city":"Fairview Heights, Belleville","state":"IL","props":2,"ask":9750000,"sf":94876,"psf":102.76571524937813,"units":728,"pop":[38518,121972,195871],"popgr":[-0.0021,-0.0021,-0.0021],"hhi":[95673,83280,78217],"sfcap":[8.13,9.07,8.91],"adjsfcap":[1.21,1.83,1.63],"lat":38.5895,"lng":-89.994,"prec":"C","stage":"Underwriting","multi":true},{"num":31,"name":"Deal 24","address":"2088A Allen Rd, Greenville, NC 27834","status":"01. Underwriting","market":"Greenville","city":"Greenville","state":"NC","props":1,"ask":7000000,"sf":79482,"psf":88.0702549004806,"units":551,"pop":[41280,90129,137003],"popgr":[0.0309,0.0289,0.0296],"hhi":[54145,61895,63635],"sfcap":[14.81,12.26,13.37],"adjsfcap":[2.01,1.63,2.07],"lat":35.6127,"lng":-77.3664,"prec":"C","stage":"Underwriting","multi":false},{"num":32,"name":"Deal 25","address":"Various","status":"01. Underwriting","market":"DFW","city":"Various","state":"TX","props":5,"ask":7000000,"sf":107522,"psf":65.10295567418761,"units":817,"pop":[81644,null,null],"popgr":[0.0568,null,null],"hhi":[68264,null,null],"sfcap":[15.49,null,null],"adjsfcap":[null,null,null],"lat":32.7767,"lng":-96.797,"prec":"C","stage":"Underwriting","multi":true},{"num":33,"name":"Deal 26","address":"5230 FM 663, Midlothian, TX","status":"01. Underwriting","market":"DFW","city":"Midlothian","state":"TX","props":1,"ask":6600000,"sf":91646,"psf":72.01623638784017,"units":573,"pop":[13362,31969,70511],"popgr":[0.0822,0.0825,0.0797],"hhi":[152755,129246,113186],"sfcap":[7.08,11.77,9.26],"adjsfcap":[0,1.89,1.65],"lat":32.4821,"lng":-96.9944,"prec":"C","stage":"Underwriting","multi":false},{"num":34,"name":"Deal 27","address":"461 Sigma Dr, Summerville, SC 29486","status":"01. Underwriting","market":"Charleston","city":"Summerville","state":"SC","props":1,"ask":16000000,"sf":72601,"psf":220.3826393575846,"units":646,"pop":[36980,118621,248995],"popgr":[0.06763115197404002,0.06217280245487733,0.06032249643567145],"hhi":[76353,73855,79912],"sfcap":[16.97,10.5,10.36],"adjsfcap":[14.63112493239589,9.242258959206211,8.360517279463442],"lat":33.0185,"lng":-80.1756,"prec":"C","stage":"Underwriting","multi":false},{"num":35,"name":"Deal 28","address":"805 H&R Drive, Knightdale, NC","status":"01. Underwriting","market":"Raleigh","city":"Knightdale","state":"NC","props":1,"ask":11000000,"sf":65400,"psf":168.19571865443424,"units":556,"pop":[49486,142053,341914],"popgr":[0.0676,0.0673,0.0662],"hhi":[86308,79612,83147],"sfcap":[14.4,7.55,10.98],"adjsfcap":[4.23,2.76,5.89],"lat":35.7877,"lng":-78.4808,"prec":"C","stage":"Underwriting","multi":false},{"num":36,"name":"Deal 29","address":"2824 1st Ave, Greeley, CO 80631","status":"01. Underwriting","market":"Denver","city":"Greeley","state":"CO","props":1,"ask":2900000,"sf":30283,"psf":95.7632995409966,"units":222,"pop":[70016,130862,160677],"popgr":[0.0591,0.0596,0.06],"hhi":[58455,62550,70586],"sfcap":[8.98,7.77,8.14],"adjsfcap":[3.59,2.49,2.36],"lat":40.4233,"lng":-104.7091,"prec":"C","stage":"Underwriting","multi":false},{"num":37,"name":"Deal 30","address":"529 Clifton Terrace, Carrollton, GA 30117","status":"01. Underwriting","market":"Atlanta","city":"Carrollton","state":"GA","props":1,"ask":1900000,"sf":15150,"psf":125.41254125412541,"units":153,"pop":[20795,49702,67441],"popgr":[0.04885789853330125,0.047100720292945875,0.048056820035290215],"hhi":[59626,68648,66918],"sfcap":[19.89,10.39,9.49],"adjsfcap":[11.933108920413561,5.533459418132067,4.8533829569549685],"lat":33.5801,"lng":-85.0766,"prec":"C","stage":"Underwriting","multi":false},{"num":38,"name":"Deal 31","address":"2450 S Curry Pike Bloomington, Indiana","status":"01. Underwriting","market":"Indianapolis","city":"Bloomington","state":"IN","props":1,"ask":17470000,"sf":90910,"psf":192.16807831921682,"units":764,"pop":[30651,89139,130920],"popgr":[0.021206485922155904,0.018409450408911843,0.01879773907729909],"hhi":[55917,56133,63990],"sfcap":[8.92,5.45,5.06],"adjsfcap":[5.97895664089263,2.8025779961632957,2.4340742438130154],"lat":39.1653,"lng":-86.5264,"prec":"C","stage":"Underwriting","multi":false},{"num":39,"name":"Deal 32","address":"Various","status":"01. Underwriting","market":"Various","city":"Various","state":"VT NH","props":11,"ask":32000000,"sf":414261,"psf":77.24598743304342,"units":3078,"pop":[null,null,null],"popgr":[null,null,null],"hhi":[null,null,null],"sfcap":[null,null,null],"adjsfcap":[null,null,null],"lat":43.8,"lng":-72.3,"prec":"C","stage":"Underwriting","multi":true},{"num":40,"name":"Deal 33","address":"1811 Eagle Lake Rd, Sealy TX  77474","status":"01. Underwriting","market":"Houston","city":"Sealy","state":"TX","props":1,"ask":6500000,"sf":52340,"psf":124.18800152846771,"units":424,"pop":[5295,5295,16721],"popgr":[0.03871576959395662,0.03871576959395662,0.0400693738412774],"hhi":[71018,71018,71215],"sfcap":[15.18,24.14,7.64],"adjsfcap":[0,0,0],"lat":29.7802,"lng":-96.1572,"prec":"C","stage":"Underwriting","multi":false},{"num":41,"name":"Deal 34","address":"2070 W River Dr Davenport, IA 52802","status":"01. Underwriting","market":"Iowa City","city":"Davenport","state":"IA","props":1,"ask":4300000,"sf":53610,"psf":80.20891624696885,"units":496,"pop":[65707,136239,235347],"popgr":[0.01832377067892299,0.018944648742283743,0.019273668243062314],"hhi":[52366,61047,70342],"sfcap":[5.53,8.08,9.51],"adjsfcap":[3.807280807219931,4.471634407181497,3.796445248930303],"lat":41.5236,"lng":-90.5776,"prec":"C","stage":"Underwriting","multi":false},{"num":42,"name":"Deal 35","address":"111 Lower Elm St, Macon, GA 31206","status":"01. Underwriting","market":"Atlanta","city":"Macon","state":"GA","props":1,"ask":3500000,"sf":31472,"psf":111.20996441281139,"units":322,"pop":[36741,81164,133151],"popgr":[0.02024985710786309,0.021253264994332444,0.020923613040833233],"hhi":[30221,39284,51974],"sfcap":[15.73,12.58,11.95],"adjsfcap":[10.901608557197681,9.110406091370558,8.434709465193652],"lat":32.8407,"lng":-83.6324,"prec":"C","stage":"Underwriting","multi":false},{"num":43,"name":"Deal 36","address":"5190 Browns Bridge Road, Cumming, GA 30041","status":"01. Underwriting","market":"Atlanta","city":"Cumming","state":"GA","props":1,"ask":4000000,"sf":96000,"psf":41.666666666666664,"units":210,"pop":[22150,50581,151227],"popgr":[0.059548532731376946,0.05958759217888132,0.05908336474306841],"hhi":[101833,101782,109025],"sfcap":[19.41,11.99,9.95],"adjsfcap":[14.5627539503386,9.105909333544217,8.009284056418497],"lat":34.2073,"lng":-84.1402,"prec":"C","stage":"Underwriting","multi":false},{"num":44,"name":"Deal 37","address":"1111 Macon View Drive, Cordova TN  38018","status":"01. Underwriting","market":"Memphis","city":"Cordova","state":"TN","props":1,"ask":6160000,"sf":46610,"psf":132.16048058356577,"units":377,"pop":[39977,97268,246331],"popgr":[0.017134852540210632,0.01712793518937361,0.016733582050168172],"hhi":[96518,96746,106706],"sfcap":[5.33,12.96,10.17],"adjsfcap":[4.082597493558796,10.221429452646296,8.008309956927873],"lat":35.156,"lng":-89.7768,"prec":"C","stage":"Underwriting","multi":false},{"num":45,"name":"Deal 38","address":"296 S HOLLYWOOD ROAD, HOUMA, LOUISIANA 70360","status":"01. Underwriting","market":"New Orleans","city":"Houma","state":"LA","props":1,"ask":6100000,"sf":82000,"psf":74.39024390243902,"units":132,"pop":[38805,60189,85916],"popgr":[0.009689473006055938,0.009752612603631805,0.009078634945761],"hhi":[75837,69777,67841],"sfcap":[16.85,12.29,10.2],"adjsfcap":[1.770648112356655,1.141570718902125,1.451743563480609],"lat":29.5958,"lng":-90.7195,"prec":"C","stage":"Underwriting","multi":false},{"num":46,"name":"Deal 39","address":"Various","status":"01. Underwriting","market":"Raleigh","city":"Siler City","state":"NC","props":3,"ask":2000000,"sf":45223,"psf":44.22528359463105,"units":421,"pop":[null,null,null],"popgr":[null,null,null],"hhi":[null,null,null],"sfcap":[null,null,null],"adjsfcap":[null,null,null],"lat":35.7235,"lng":-79.4622,"prec":"C","stage":"Underwriting","multi":true},{"num":47,"name":"Deal 40","address":"1034 Short Elm St. Rockford, IL 61102","status":"01. Underwriting","market":"Chicago","city":"Rockford","state":"IL","props":1,"ask":3300000,"sf":41723,"psf":79.09306617453203,"units":403,"pop":[76405,138155,223557],"popgr":[0.017106210326549354,0.01705330968839358,0.01700237523316206],"hhi":[43224,52160,61773],"sfcap":[4.15,6.42,8.12],"adjsfcap":[0.6431254499051109,2.376128261735008,3.057752608954316],"lat":42.2711,"lng":-89.094,"prec":"C","stage":"Underwriting","multi":false},{"num":48,"name":"Deal 41","address":"Various","status":"01. Underwriting","market":"Wilmington","city":"New Bern","state":"NC","props":5,"ask":13250000,"sf":130070,"psf":101.86822480202967,"units":1001,"pop":[null,null,null],"popgr":[null,null,null],"hhi":[null,null,null],"sfcap":[null,null,null],"adjsfcap":[null,null,null],"lat":35.1085,"lng":-77.0441,"prec":"C","stage":"Underwriting","multi":true},{"num":49,"name":"Deal 42","address":"653 CARLYLE AVE, BELLEVILLE, IL","status":"01. Underwriting","market":"St Louis","city":"Belleville","state":"IL","props":2,"ask":4000000,"sf":94876,"psf":42.16029343564231,"units":728,"pop":[48891,91052,150399],"popgr":[-0.0020658198850503906,-0.002196547028071816,-0.0020478859566885887],"hhi":[75733,78208,82031],"sfcap":[14.46,11.5,10.41],"adjsfcap":[7.881368759076312,5.596856741202829,3.8833502882332995],"lat":38.52,"lng":-89.984,"prec":"C","stage":"Underwriting","multi":true},{"num":50,"name":"Deal 43","address":"2980 I-30, Greenville, TX 75401","status":"01. Underwriting","market":"Dallas","city":"Greenville","state":"TX","props":1,"ask":4700000,"sf":109050,"psf":43.099495644199905,"units":450,"pop":[3341,10638,41534],"popgr":[0.081412750673451,0.07924421883812749,0.07942890162276695],"hhi":[72090,67442,66513],"sfcap":[46.05,20.07,15.37],"adjsfcap":[0,0,5.580632734627052],"lat":33.1384,"lng":-96.1108,"prec":"C","stage":"Underwriting","multi":false},{"num":51,"name":"Deal 44","address":"10005 E 126th St N, Collinsville, OK 74021","status":"01. Underwriting","market":"Tulsa","city":"Collinsville","state":"OK","props":1,"ask":3690000,"sf":56850,"psf":64.90765171503958,"units":526,"pop":[22463,53071,82690],"popgr":[0.03828518007389925,0.03574456859678543,0.03433305115491603],"hhi":[81940,84370,85483],"sfcap":[10.47,15.38,13.71],"adjsfcap":[0,4.614290290365736,2.961482646027331],"lat":36.33734,"lng":-95.86314,"prec":"E","stage":"Underwriting","multi":false},{"num":52,"name":"Deal 45","address":"829 Carr Street Rocky Mount, NC","status":"01. Underwriting","market":"Raleigh","city":"Rocky Mount","state":"NC","props":1,"ask":1450000,"sf":37254,"psf":38.921994953562034,"units":369,"pop":[38936,55060,77080],"popgr":[0.018774399013766097,0.018488921176897932,0.01855215360664242],"hhi":[51602,57939,63693],"sfcap":[8.54,10.64,10.38],"adjsfcap":[4.253801109513047,4.856175081729023,3.468876491956409],"lat":35.9382,"lng":-77.7905,"prec":"C","stage":"Underwriting","multi":false},{"num":53,"name":"Deal 46","address":"204 E State Rd St, Island Lake, IL 60042","status":"01. Underwriting","market":"Chicago","city":"Island Lake","state":"IL","props":1,"ask":3000000,"sf":32800,"psf":91.46341463414635,"units":258,"pop":[23347,69864,212648],"popgr":[0.025913393583758104,0.025220428260620542,0.02522008201346826],"hhi":[98795,113141,110804],"sfcap":[11.6,9.41,9.41],"adjsfcap":[8.394311903028226,3.6103286384976525,4.845533463752305],"lat":42.2769,"lng":-88.1917,"prec":"C","stage":"Underwriting","multi":false},{"num":54,"name":"Deal 47","address":"3401 Farm to Market Rd 720, Little Elm, TX 75068","status":"01. Underwriting","market":"Dallas","city":"Little Elm","state":"TX","props":1,"ask":11000000,"sf":84452,"psf":130.25150381281674,"units":137,"pop":[26621,124243,344362],"popgr":[0.07869726907328811,0.07812110139001804,0.0778657343144713],"hhi":[114123,116231,120986],"sfcap":[4.44,5.32,8.46],"adjsfcap":[2.8180008264152363,4.167373614610079,7.093796644229038],"lat":33.1626,"lng":-96.9375,"prec":"C","stage":"Underwriting","multi":false},{"num":55,"name":"Deal 48","address":"6015 Industrial Blvd., Greenville TX  75402","status":"01. Underwriting","market":"Dallas","city":"Greenville","state":"TX","props":1,"ask":3800000,"sf":45120,"psf":84.21985815602837,"units":318,"pop":[18910,36337,50549],"popgr":[0.07884717080909565,0.07898285494124435,0.0792894023620645],"hhi":[46331,61310,67339],"sfcap":[8.92,12.51,15.86],"adjsfcap":[5.333051295610788,8.463577070203925,6.084017487981958],"lat":33.1384,"lng":-96.1108,"prec":"C","stage":"Underwriting","multi":false},{"num":56,"name":"Deal 49","address":"501 Ridge Rd. Homewood, IL 60430","status":"01. Underwriting","market":"Chicago","city":"Homewood","state":"IL","props":1,"ask":1100000,"sf":16620,"psf":66.18531889290011,"units":143,"pop":[62825,206401,544664],"popgr":[0.035272582570632816,0.03530021656871818,0.031722309533951165],"hhi":[79328,71662,70562],"sfcap":[6.63,6.9,5.27],"adjsfcap":[5.543207321925985,6.0581198734502255,4.414547317245127],"lat":41.5572,"lng":-87.6656,"prec":"C","stage":"Underwriting","multi":false},{"num":57,"name":"Deal 50","address":"8888 Faulkner Lake Rd, North Little Rock, AR 72118","status":"01. Underwriting","market":"Little Rock","city":"North Little Rock","state":"AR","props":1,"ask":2500000,"sf":33825,"psf":73.90983000739098,"units":304,"pop":[7599,16873,111451],"popgr":[0.0161863403079352,0.015527766253778275,0.015540461727575394],"hhi":[47592,45671,60143],"sfcap":[14.36,41.3,13.42],"adjsfcap":[0,7.136016120429088,2.6616450278597767],"lat":34.7695,"lng":-92.2671,"prec":"C","stage":"Underwriting","multi":false}]}
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById('report-data').textContent);
+const REO  = DATA.reo;
+const PIPE = DATA.pipeline;
+
+/* ─── Theme ─────────────────────────────────────────────────────────── */
+(function initTheme(){
+  let saved = null;
+  try { saved = localStorage.getItem('dashboardTheme'); } catch(e){}
+  if (saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+})();
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') !== 'dark';
+  if (dark) document.documentElement.setAttribute('data-theme','dark');
+  else document.documentElement.removeAttribute('data-theme');
+  try { localStorage.setItem('dashboardTheme', dark ? 'dark' : 'light'); } catch(e){}
+  applyTiles('reo'); applyTiles('pipe');
+  restyleCharts();
+});
+
+/* ─── Formatters ────────────────────────────────────────────────────── */
+const nf = n => (n==null || isNaN(n)) ? '—' : Number(n).toLocaleString('en-US');
+const money0 = n => (n==null || isNaN(n)) ? '—' : '$' + Math.round(Number(n)).toLocaleString('en-US');
+const money2 = n => (n==null || isNaN(n)) ? '—' : '$' + Number(n).toFixed(2);
+const compact = n => {
+  if (n==null || isNaN(n)) return '—';
+  const v = Number(n);
+  if (Math.abs(v) >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
+  if (Math.abs(v) >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+  if (Math.abs(v) >= 1e3) return '$' + (v/1e3).toFixed(0) + 'K';
+  return '$' + v.toFixed(0);
+};
+const compactN = n => {
+  if (n==null || isNaN(n)) return '—';
+  const v = Number(n);
+  if (Math.abs(v) >= 1e6) return (v/1e6).toFixed(2).replace(/\.?0+$/,'') + 'M';
+  if (Math.abs(v) >= 1e3) return (v/1e3).toFixed(0) + 'K';
+  return String(Math.round(v));
+};
+const pct1 = n => (n==null || isNaN(n)) ? '—' : (Number(n)*100).toFixed(2) + '%';
+const num1 = n => (n==null || isNaN(n)) ? '—' : Number(n).toFixed(1);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dfmt = s => {
+  if (!s) return '—';
+  const [y,m,d] = s.split('-');
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1] + " '" + y.slice(2);
+};
+
+/* ─── Stage config ──────────────────────────────────────────────────── */
+const STAGES = [
+  { key:'ROFR',        cls:'rofr', color:'#C52127', rank:5 },
+  { key:'In DD',       cls:'dd',   color:'#C97A18', rank:4 },
+  { key:'PSA',         cls:'psa',  color:'#2E5E7E', rank:3 },
+  { key:'LOI',         cls:'loi',  color:'#5C7B93', rank:2 },
+  { key:'Underwriting',cls:'uw',   color:'#9AA3AB', rank:1 },
+];
+const stageMeta = k => STAGES.find(s => s.key === k) || STAGES[4];
+
+/* ─── Derive ────────────────────────────────────────────────────────── */
+REO.forEach(r => { r.avgunit = r.units ? r.sf / r.units : null; });
+PIPE.forEach(p => {
+  const m = stageMeta(p.stage);
+  p.stageRank = m.rank; p.color = m.color; p.cls = m.cls;
+  p.pop5  = p.pop[1];  p.hhi5 = p.hhi[1];
+  p.adj5  = p.adjsfcap[1];
+  p.hasDemo = p.pop.some(v => v != null);
+});
+const dealLabel = p => p.name;
+
+/* ─── State ─────────────────────────────────────────────────────────── */
+const F = {
+  reo:  { states: new Set(), lenders: new Set(), q: '' },
+  pipe: { stages: new Set(), states: new Set(), q: '' },
+};
+const SORT = {
+  reo:  { k:'acq',       dir:-1 },
+  pipe: { k:'stageRank', dir:-1 },
+};
+let expanded = new Set();
+let selected = { reo:null, pipe:null };
+
+/* ─── Filtering ─────────────────────────────────────────────────────── */
+function reoRows() {
+  const f = F.reo, q = f.q.toLowerCase();
+  return REO.filter(r =>
+    (!f.states.size  || f.states.has(r.state)) &&
+    (!f.lenders.size || f.lenders.has(r.lender)) &&
+    (!q || (String(r.store)+' '+r.short+' '+r.address+' '+r.lender).toLowerCase().includes(q))
+  );
+}
+function pipeRows() {
+  const f = F.pipe, q = f.q.toLowerCase();
+  return PIPE.filter(p =>
+    (!f.stages.size || f.stages.has(p.stage)) &&
+    (!f.states.size || f.states.has(p.state)) &&
+    (!q || (p.name+' '+p.market+' '+p.city+' '+p.state+' '+p.address).toLowerCase().includes(q))
+  );
+}
+function sortRows(rows, which) {
+  const {k, dir} = SORT[which];
+  return rows.slice().sort((a,b) => {
+    let x = k === 'label' ? dealLabel(a) : a[k];
+    let y = k === 'label' ? dealLabel(b) : b[k];
+    if (x == null) return 1; if (y == null) return -1;
+    if (typeof x === 'string') return dir * x.localeCompare(y);
+    return dir * (x - y);
+  });
+}
+
+/* ─── Filter pill builders ──────────────────────────────────────────── */
+function buildPills(el, values, set, onChange, colorFn) {
+  el.innerHTML = '';
+  const all = document.createElement('button');
+  all.type = 'button'; all.textContent = 'All';
+  all.className = set.size ? '' : 'active';
+  all.onclick = () => { set.clear(); onChange(); };
+  el.appendChild(all);
+  values.forEach(v => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = set.has(v) ? 'active' : '';
+    if (colorFn) {
+      const sw = document.createElement('span');
+      sw.className = 'swatch'; sw.style.background = colorFn(v);
+      b.appendChild(sw);
+    }
+    b.appendChild(document.createTextNode(v));
+    b.onclick = () => { set.has(v) ? set.delete(v) : set.add(v); onChange(); };
+    el.appendChild(b);
+  });
+}
+
+/* ═══════════════════ OWNED TAB ═══════════════════ */
+function renderReo() {
+  const rows = reoRows();
+  const sum = (k) => rows.reduce((a,r) => a + (r[k]||0), 0);
+  const price = sum('price'), sf = sum('sf'), units = sum('units');
+  const states = new Set(rows.map(r => r.state));
+
+  document.getElementById('r-k-props').textContent  = nf(rows.length);
+  document.getElementById('r-k-props-s').textContent = rows.length === REO.length ? 'all Fund 5 assets' : 'of ' + REO.length + ' total';
+  document.getElementById('r-k-states').textContent = nf(states.size);
+  document.getElementById('r-k-states-s').textContent = [...states].sort().join(' · ') || '\u00a0';
+  document.getElementById('r-k-units').textContent  = nf(units);
+  document.getElementById('r-k-units-s').textContent = units ? (Math.round(sf/units)) + ' SF avg unit' : '\u00a0';
+  document.getElementById('r-k-sf').textContent     = compactN(sf);
+  document.getElementById('r-k-sf-s').textContent   = nf(sf) + ' SF';
+  document.getElementById('r-k-pp').textContent     = compact(price);
+  document.getElementById('r-k-pp-s').textContent   = rows.length ? compact(price/rows.length) + ' avg per asset' : '\u00a0';
+  document.getElementById('r-k-psf').textContent    = sf ? money2(price/sf) : '—';
+  document.getElementById('r-k-psf-s').textContent  = 'purchase price ÷ NRSF';
+
+  /* state bars */
+  const byState = {};
+  rows.forEach(r => {
+    const s = byState[r.state] = byState[r.state] || {price:0, sf:0, n:0, units:0};
+    s.price += r.price||0; s.sf += r.sf||0; s.units += r.units||0; s.n++;
+  });
+  const arr = Object.entries(byState).sort((a,b) => b[1].price - a[1].price);
+  const max = arr.length ? arr[0][1].price : 1;
+  document.getElementById('r-state-hint').textContent = arr.length + (arr.length===1?' state':' states');
+  document.getElementById('r-state-bars').innerHTML = arr.map(([st,v]) => `
+    <div class="bar-item" data-state="${esc(st)}">
+      <div class="bar-label">${esc(st)}<span class="bar-sub">${v.n} ${v.n===1?'site':'sites'}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v.price/max*100).toFixed(1)}%;background:var(--red)"></div></div>
+      <div class="bar-val">${compact(v.price)}</div>
+    </div>`).join('') || '<div class="no-demo">No properties match the current filters.</div>';
+  document.querySelectorAll('#r-state-bars .bar-item').forEach(el => {
+    el.onclick = () => {
+      const st = el.dataset.state;
+      F.reo.states.has(st) ? F.reo.states.delete(st) : F.reo.states.add(st);
+      syncReoPills(); renderReo();
+    };
+  });
+
+  /* table */
+  const sorted = sortRows(rows, 'reo');
+  document.getElementById('r-tbl-hint').textContent = sorted.length + ' shown';
+  document.getElementById('r-tbody').innerHTML = sorted.map(r => `
+    <tr class="drow ${selected.reo===r.store?'sel':''}" data-store="${r.store}">
+      <td class="tl mono">${r.store}</td>
+      <td class="tl"><div class="nm">${esc(r.short)}</div><div class="sub">${esc(r.address)}</div></td>
+      <td class="tl">${esc(r.state)}</td>
+      <td>${dfmt(r.acq)}</td>
+      <td>${money0(r.price)}</td>
+      <td>${money2(r.psf)}</td>
+      <td>${nf(r.sf)}</td>
+      <td>${nf(r.units)}</td>
+      <td>${r.avgunit ? Math.round(r.avgunit) : '—'}</td>
+      <td class="tl"><span class="chip">${esc(r.lender)}</span></td>
+    </tr>`).join('');
+  document.getElementById('r-tfoot').innerHTML = `
+    <tr><td colspan="4">Total — ${sorted.length} ${sorted.length===1?'property':'properties'}</td>
+      <td>${money0(price)}</td><td>${sf?money2(price/sf):'—'}</td>
+      <td>${nf(sf)}</td><td>${nf(units)}</td>
+      <td>${units?Math.round(sf/units):'—'}</td><td></td></tr>`;
+  document.querySelectorAll('#r-tbody tr.drow').forEach(tr => {
+    tr.onclick = () => {
+      const s = +tr.dataset.store;
+      selected.reo = selected.reo === s ? null : s;
+      renderReo();
+      if (selected.reo != null) focusMarker('reo', s);
+    };
+  });
+
+  drawReoChart(rows);
+  drawReoMap(rows);
+}
+
+function syncReoPills() {
+  buildPills(document.getElementById('reo-state-pills'),
+    [...new Set(REO.map(r => r.state))].sort(), F.reo.states,
+    () => { syncReoPills(); renderReo(); });
+  buildPills(document.getElementById('reo-lender-pills'),
+    [...new Set(REO.map(r => r.lender))].sort(), F.reo.lenders,
+    () => { syncReoPills(); renderReo(); });
+}
+
+/* cumulative capital deployed */
+let reoChart = null;
+function drawReoChart(rows) {
+  const pts = rows.filter(r => r.acq).slice().sort((a,b) => a.acq < b.acq ? -1 : 1);
+  let run = 0;
+  const labels = [], vals = [];
+  pts.forEach(r => { run += r.price||0; labels.push(dfmt(r.acq)); vals.push(run); });
+  const ctx = document.getElementById('r-chart');
+  if (reoChart) reoChart.destroy();
+  reoChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [{
+      data: vals, borderColor: '#C52127', backgroundColor: 'rgba(197,33,39,.10)',
+      fill: true, stepped: true, borderWidth: 2,
+      pointRadius: 3, pointBackgroundColor: '#C52127', pointBorderColor: '#fff', pointBorderWidth: 1.5,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{
+        callbacks:{ label: c => 'Cumulative ' + compact(c.parsed.y) } } },
+      scales: {
+        x: { grid:{display:false}, ticks:{ font:{size:9}, maxRotation:0, autoSkip:true, maxTicksLimit:7 } },
+        y: { grid:{ color:'rgba(128,128,128,.14)' }, ticks:{ font:{size:9}, callback: v => compact(v) }, beginAtZero:true }
+      }
+    }
+  });
+  restyleCharts();
+}
+function restyleCharts() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const c = dark ? '#9A9284' : '#5C5C5C';
+  if (reoChart) {
+    reoChart.options.scales.x.ticks.color = c;
+    reoChart.options.scales.y.ticks.color = c;
+    reoChart.update('none');
+  }
+}
+
+/* ═══════════════════ PIPELINE TAB ═══════════════════ */
+function renderPipe() {
+  const rows = pipeRows();
+  const sum = k => rows.reduce((a,p) => a + (p[k]||0), 0);
+  const ask = sum('ask'), sf = sum('sf'), units = sum('units'), props = sum('props');
+
+  document.getElementById('p-k-deals').textContent  = nf(rows.length);
+  document.getElementById('p-k-deals-s').textContent = rows.length === PIPE.length ? 'all tracked deals' : 'of ' + PIPE.length + ' tracked';
+  document.getElementById('p-k-props').textContent  = nf(props);
+  document.getElementById('p-k-props-s').textContent = (props/Math.max(rows.length,1)).toFixed(1) + ' properties per deal';
+  document.getElementById('p-k-ask').textContent    = compact(ask);
+  document.getElementById('p-k-ask-s').textContent  = rows.length ? compact(ask/rows.length) + ' avg deal size' : '\u00a0';
+  document.getElementById('p-k-sf').textContent     = compactN(sf);
+  document.getElementById('p-k-sf-s').textContent   = nf(sf) + ' SF';
+  document.getElementById('p-k-units').textContent  = nf(units);
+  document.getElementById('p-k-units-s').textContent = units ? Math.round(sf/units) + ' SF avg unit' : '\u00a0';
+  document.getElementById('p-k-psf').textContent    = sf ? money2(ask/sf) : '—';
+  document.getElementById('p-k-psf-s').textContent  = 'asking price ÷ NRSF';
+
+  /* stage bars — always show all stages (from the full set) so the funnel reads */
+  const byStage = {};
+  PIPE.forEach(p => {
+    const s = byStage[p.stage] = byStage[p.stage] || {ask:0, n:0, props:0};
+    s.ask += p.ask||0; s.n++; s.props += p.props||0;
+  });
+  const maxS = Math.max(...Object.values(byStage).map(v => v.ask), 1);
+  document.getElementById('p-stage-bars').innerHTML = STAGES.filter(s => byStage[s.key]).map(s => {
+    const v = byStage[s.key], on = F.pipe.stages.has(s.key);
+    return `<div class="bar-item" data-stage="${esc(s.key)}" style="${on?'':'opacity:' + (F.pipe.stages.size?'.42':'1')}">
+      <div class="bar-label"><span class="dot" style="background:${s.color}"></span>${esc(s.key)}<span class="bar-sub">${v.n}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v.ask/maxS*100).toFixed(1)}%;background:${s.color}"></div></div>
+      <div class="bar-val">${compact(v.ask)}</div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#p-stage-bars .bar-item').forEach(el => {
+    el.onclick = () => {
+      const s = el.dataset.stage;
+      F.pipe.stages.has(s) ? F.pipe.stages.delete(s) : F.pipe.stages.add(s);
+      syncPipePills(); renderPipe();
+    };
+  });
+
+  /* state bars */
+  const byState = {};
+  rows.forEach(p => {
+    const s = byState[p.state] = byState[p.state] || {ask:0, n:0};
+    s.ask += p.ask||0; s.n++;
+  });
+  const arr = Object.entries(byState).sort((a,b) => b[1].ask - a[1].ask).slice(0, 12);
+  const maxSt = arr.length ? arr[0][1].ask : 1;
+  document.getElementById('p-state-hint').textContent =
+    Object.keys(byState).length + ' states' + (Object.keys(byState).length > 12 ? ' · top 12' : '');
+  document.getElementById('p-state-bars').innerHTML = arr.map(([st,v]) => `
+    <div class="bar-item" data-state="${esc(st)}">
+      <div class="bar-label">${esc(st)}<span class="bar-sub">${v.n}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v.ask/maxSt*100).toFixed(1)}%;background:var(--gray-dark)"></div></div>
+      <div class="bar-val">${compact(v.ask)}</div>
+    </div>`).join('') || '<div class="no-demo">No deals match the current filters.</div>';
+  document.querySelectorAll('#p-state-bars .bar-item').forEach(el => {
+    el.onclick = () => {
+      const st = el.dataset.state;
+      F.pipe.states.has(st) ? F.pipe.states.delete(st) : F.pipe.states.add(st);
+      syncPipePills(); renderPipe();
+    };
+  });
+
+  /* legend */
+  document.getElementById('p-legend').innerHTML = STAGES.filter(s => byStage[s.key])
+    .map(s => `<span><span class="dot" style="background:${s.color}"></span>${esc(s.key)}</span>`).join('');
+
+  /* table */
+  const sorted = sortRows(rows, 'pipe');
+  document.getElementById('p-tbl-hint').textContent = sorted.length + ' shown';
+  document.getElementById('p-tbody').innerHTML = sorted.map(p => {
+    const open = expanded.has(p.num);
+    const main = `
+      <tr class="drow ${selected.pipe===p.num?'sel':''}" data-num="${p.num}">
+        <td class="tl"><div class="nm">${esc(dealLabel(p))}</div><div class="sub">${esc(p.address || p.city)}</div></td>
+        <td class="tl"><span class="tag ${p.cls}">${esc(p.stage)}</span></td>
+        <td class="tl">${esc(p.market)}</td>
+        <td class="tl">${esc(p.state)}</td>
+        <td>${nf(p.props)}</td>
+        <td>${money0(p.ask)}</td>
+        <td>${money2(p.psf)}</td>
+        <td>${nf(p.sf)}</td>
+        <td>${nf(p.units)}</td>
+        <td>${p.pop5!=null?nf(p.pop5):'—'}</td>
+        <td>${p.hhi5!=null?money0(p.hhi5):'—'}</td>
+        <td>${p.adj5!=null?num1(p.adj5):'—'}</td>
+      </tr>`;
+    if (!open) return main;
+    return main + `<tr class="demo-row"><td colspan="12">${demoPanel(p)}</td></tr>`;
+  }).join('');
+  document.getElementById('p-tfoot').innerHTML = `
+    <tr><td colspan="4">Total — ${sorted.length} ${sorted.length===1?'deal':'deals'}</td>
+      <td>${nf(props)}</td><td>${money0(ask)}</td><td>${sf?money2(ask/sf):'—'}</td>
+      <td>${nf(sf)}</td><td>${nf(units)}</td><td></td><td></td><td></td></tr>`;
+  document.querySelectorAll('#p-tbody tr.drow').forEach(tr => {
+    tr.onclick = () => {
+      const n = +tr.dataset.num;
+      expanded.has(n) ? expanded.delete(n) : expanded.add(n);
+      selected.pipe = expanded.has(n) ? n : null;
+      renderPipe();
+      if (selected.pipe != null) focusMarker('pipe', n);
+    };
+  });
+
+  drawPipeMap(rows);
+}
+
+function ring(label, vals, fmt) {
+  return `<div class="demo-box"><h4>${label}</h4><div class="demo-rings">
+    ${['3-mi','5-mi','8-mi'].map((r,i) =>
+      `<div class="demo-ring"><div class="r">${r}</div><div class="v">${vals[i]==null?'—':fmt(vals[i])}</div></div>`).join('')}
+  </div></div>`;
+}
+function demoPanel(p) {
+  if (!p.hasDemo) return `<div class="demo-panel"><div class="no-demo">No trade-area demographics loaded for this deal — typically a multi-site portfolio with no single centroid.</div>
+    <div class="demo-meta" style="margin-top:8px">Address: <b>${esc(p.address || '—')}</b> · Market: <b>${esc(p.market)}</b> · Properties: <b>${nf(p.props)}</b></div></div>`;
+  return `<div class="demo-panel">
+    <div class="demo-grid">
+      ${ring('Population', p.pop, nf)}
+      ${ring('Population growth (proj)', p.popgr, pct1)}
+      ${ring('Median HHI', p.hhi, money0)}
+      ${ring('SF per capita', p.sfcap, num1)}
+      ${ring('Adj. SF per capita', p.adjsfcap, num1)}
+    </div>
+    <div class="demo-meta">Address: <b>${esc(p.address || '—')}</b> · Market: <b>${esc(p.market)}</b> · Properties: <b>${nf(p.props)}</b> · Pin: <b>${p.prec==='E'?'street level':'city / market centroid'}</b><br>
+    Adjusted SF per capita excludes sub-20k SF facilities and unsophisticated operators.</div>
+  </div>`;
+}
+
+function syncPipePills() {
+  buildPills(document.getElementById('pipe-stage-pills'),
+    STAGES.map(s => s.key).filter(k => PIPE.some(p => p.stage === k)),
+    F.pipe.stages, () => { syncPipePills(); renderPipe(); }, k => stageMeta(k).color);
+  buildPills(document.getElementById('pipe-state-pills'),
+    [...new Set(PIPE.map(p => p.state))].sort(), F.pipe.states,
+    () => { syncPipePills(); renderPipe(); });
+}
+
+/* ═══════════════════ MAPS ═══════════════════ */
+const M = { reo:{map:null, layer:null, tiles:null, active:null, basemap:'map', markers:{}},
+            pipe:{map:null, layer:null, tiles:null, active:null, basemap:'map', markers:{}} };
+
+function ensureMap(which) {
+  const m = M[which];
+  if (m.map) return m.map;
+  m.map = L.map(which === 'reo' ? 'map-reo' : 'map-pipe', {
+    center: [36.5, -90], zoom: 4, scrollWheelZoom: true
+  });
+  m.tiles = {
+    light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      { attribution: '&copy; OSM &copy; CARTO', subdomains:'abcd', maxZoom: 19 }),
+    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      { attribution: '&copy; OSM &copy; CARTO', subdomains:'abcd', maxZoom: 19 }),
+    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { attribution: 'Tiles &copy; Esri', maxZoom: 19 })
+  };
+  applyTiles(which);
+  document.querySelectorAll('#bm-' + which + ' button').forEach(b => {
+    b.onclick = () => {
+      const w = b.dataset.layer === 'satellite' ? 'satellite' : 'map';
+      if (w === m.basemap) return;
+      document.querySelectorAll('#bm-' + which + ' button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      m.basemap = w; applyTiles(which);
+    };
+  });
+  m.layer = L.markerClusterGroup({
+    showCoverageOnHover: false, maxClusterRadius: 44,
+    spiderfyOnMaxZoom: true, disableClusteringAtZoom: 10,
+    iconCreateFunction: cl => clusterIcon(cl, which)
+  });
+  m.map.addLayer(m.layer);
+  return m.map;
+}
+function applyTiles(which) {
+  const m = M[which];
+  if (!m.map) return;
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = m.basemap === 'satellite' ? m.tiles.satellite : (dark ? m.tiles.dark : m.tiles.light);
+  if (m.active === next) return;
+  if (m.active) m.map.removeLayer(m.active);
+  m.active = next; next.addTo(m.map);
+}
+function clusterIcon(cluster, which) {
+  const kids = cluster.getAllChildMarkers();
+  const total = kids.length;
+  const size = total < 5 ? 34 : total < 15 ? 42 : 50;
+  const stroke = 6, r = (size-stroke)/2, cx = size/2, C = 2*Math.PI*r;
+  // segment the ring by stage colour share
+  const tally = {};
+  kids.forEach(k => { const c = k.options.segColor || '#C52127'; tally[c] = (tally[c]||0)+1; });
+  let offset = 0, segs = '';
+  Object.entries(tally).forEach(([color, n]) => {
+    const arc = C * (n/total);
+    segs += `<circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${arc.toFixed(2)} ${(C-arc).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}"
+      transform="rotate(-90 ${cx} ${cx})"></circle>`;
+    offset += arc;
+  });
+  const html = `<div class="cluster-donut" style="width:${size}px;height:${size}px">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${cx}" cy="${cx}" r="${r}" fill="#FFFFFF" stroke="#E4DFD6" stroke-width="${stroke}"></circle>${segs}
+    </svg><div class="count" style="font-size:${total<10?12:13}px">${total}</div></div>`;
+  return L.divIcon({ html, className:'cluster-donut-wrap', iconSize:[size,size], iconAnchor:[size/2,size/2] });
+}
+function dotIcon(color, size, hollow) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="marker-dot ${hollow?'hollow':''}" style="width:${size}px;height:${size}px;background:${color};border-color:${hollow?color:'#fff'}"></div>`,
+    iconSize: [size, size], iconAnchor: [size/2, size/2]
+  });
+}
+
+function drawReoMap(rows) {
+  const m = M.reo; ensureMap('reo');
+  m.layer.clearLayers(); m.markers = {};
+  const bounds = [];
+  rows.forEach(r => {
+    const mk = L.marker([r.lat, r.lng], { icon: dotIcon('#C52127', 15, false), segColor:'#C52127' });
+    mk.bindPopup(`<div class="pop">
+      <div class="pop-hd"><div class="t">${esc(r.short)}</div><div class="a">${esc(r.address)}</div></div>
+      <div class="pop-bd">
+        <div><div class="k">Store</div><div class="v">${r.store}</div></div>
+        <div><div class="k">Closed</div><div class="v">${dfmt(r.acq)}</div></div>
+        <div><div class="k">Purchase price</div><div class="v">${money0(r.price)}</div></div>
+        <div><div class="k">$ / SF</div><div class="v">${money2(r.psf)}</div></div>
+        <div><div class="k">Net rentable SF</div><div class="v">${nf(r.sf)}</div></div>
+        <div><div class="k">Units</div><div class="v">${nf(r.units)}</div></div>
+      </div>
+      <div class="pop-ft">${esc(r.fund)} · ${esc(r.status)} · ${esc(r.lender)}</div></div>`, {maxWidth: 330});
+    m.markers[r.store] = mk;
+    m.layer.addLayer(mk); bounds.push([r.lat, r.lng]);
+  });
+  m.lastBounds = bounds;
+  if (bounds.length) m.map.fitBounds(bounds, { padding:[38,38], maxZoom: 9 });
+}
+
+function drawPipeMap(rows) {
+  const m = M.pipe; ensureMap('pipe');
+  m.layer.clearLayers(); m.markers = {};
+  const bounds = [];
+  const maxAsk = Math.max(...PIPE.map(p => p.ask||0), 1);
+  rows.forEach(p => {
+    const size = 11 + 17 * Math.sqrt((p.ask||0)/maxAsk);
+    const mk = L.marker([p.lat, p.lng], { icon: dotIcon(p.color, size, p.prec !== 'E'), segColor: p.color });
+    mk.bindPopup(`<div class="pop">
+      <div class="pop-hd"><div class="t">${esc(dealLabel(p))}</div>
+        <div class="a">${esc(p.address || (p.city + ', ' + p.state))}</div></div>
+      <div class="pop-bd">
+        <div><div class="k">Stage</div><div class="v" style="color:${p.color}">${esc(p.stage)}</div></div>
+        <div><div class="k">Properties</div><div class="v">${nf(p.props)}</div></div>
+        <div><div class="k">Asking price</div><div class="v">${money0(p.ask)}</div></div>
+        <div><div class="k">$ / SF</div><div class="v">${money2(p.psf)}</div></div>
+        <div><div class="k">Net rentable SF</div><div class="v">${nf(p.sf)}</div></div>
+        <div><div class="k">Units</div><div class="v">${nf(p.units)}</div></div>
+        ${p.hasDemo ? `<div><div class="k">Pop 5-mi</div><div class="v">${nf(p.pop[1])}</div></div>
+        <div><div class="k">Adj SF/cap 5-mi</div><div class="v">${num1(p.adjsfcap[1])}</div></div>` : ''}
+      </div>
+      <div class="pop-ft">${esc(p.market)} market · pin ${p.prec==='E'?'street level':'city / market centroid'}</div></div>`,
+      {maxWidth: 340});
+    m.markers[p.num] = mk;
+    m.layer.addLayer(mk); bounds.push([p.lat, p.lng]);
+  });
+  m.lastBounds = bounds;
+  if (bounds.length) m.map.fitBounds(bounds, { padding:[38,38], maxZoom: 8 });
+}
+
+function focusMarker(which, id) {
+  const m = M[which];
+  const mk = m.markers[id];
+  if (!mk || !m.map) return;
+  m.layer.zoomToShowLayer(mk, () => mk.openPopup());
+}
+
+/* ═══════════════════ TABS + WIRING ═══════════════════ */
+document.querySelectorAll('#tabs button').forEach(b => {
+  b.onclick = () => {
+    const t = b.dataset.tab;
+    document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('active', x === b));
+    document.getElementById('tab-reo').classList.toggle('active', t === 'reo');
+    document.getElementById('tab-pipe').classList.toggle('active', t === 'pipe');
+    document.getElementById('fb-reo').style.display  = t === 'reo'  ? '' : 'none';
+    document.getElementById('fb-pipe').style.display = t === 'pipe' ? '' : 'none';
+    setTimeout(() => {
+      const m = M[t];
+      if (!m.map) return;
+      m.map.invalidateSize();
+      if (m.lastBounds && m.lastBounds.length) {
+        m.map.fitBounds(m.lastBounds, { padding:[38,38], maxZoom: t === 'reo' ? 9 : 8 });
+      }
+    }, 60);
+  };
+});
+
+document.querySelectorAll('#r-table thead th').forEach(th => {
+  th.onclick = () => {
+    const k = th.dataset.k;
+    SORT.reo = { k, dir: SORT.reo.k === k ? -SORT.reo.dir : (typeof REO[0][k] === 'string' ? 1 : -1) };
+    document.querySelectorAll('#r-table thead th').forEach(x => x.classList.remove('sorted'));
+    th.classList.add('sorted');
+    th.querySelector('.arw').textContent = SORT.reo.dir === 1 ? '▲' : '▼';
+    renderReo();
+  };
+});
+document.querySelectorAll('#p-table thead th').forEach(th => {
+  th.onclick = () => {
+    const k = th.dataset.k;
+    const isStr = k === 'label' || typeof PIPE[0][k] === 'string';
+    SORT.pipe = { k, dir: SORT.pipe.k === k ? -SORT.pipe.dir : (isStr ? 1 : -1) };
+    document.querySelectorAll('#p-table thead th').forEach(x => x.classList.remove('sorted'));
+    th.classList.add('sorted');
+    th.querySelector('.arw').textContent = SORT.pipe.dir === 1 ? '▲' : '▼';
+    renderPipe();
+  };
+});
+
+let _t1, _t2;
+document.getElementById('reo-search').oninput = e => {
+  clearTimeout(_t1); _t1 = setTimeout(() => { F.reo.q = e.target.value.trim(); renderReo(); }, 140);
+};
+document.getElementById('pipe-search').oninput = e => {
+  clearTimeout(_t2); _t2 = setTimeout(() => { F.pipe.q = e.target.value.trim(); renderPipe(); }, 140);
+};
+document.getElementById('reo-reset').onclick = () => {
+  F.reo.states.clear(); F.reo.lenders.clear(); F.reo.q = '';
+  document.getElementById('reo-search').value = '';
+  selected.reo = null; syncReoPills(); renderReo();
+};
+document.getElementById('pipe-reset').onclick = () => {
+  F.pipe.stages.clear(); F.pipe.states.clear(); F.pipe.q = '';
+  document.getElementById('pipe-search').value = '';
+  selected.pipe = null; expanded.clear(); syncPipePills(); renderPipe();
+};
+
+/* ─── Boot ──────────────────────────────────────────────────────────── */
+document.getElementById('refreshed').textContent = DATA.snapshotLabel;
+document.getElementById('tc-reo').textContent  = REO.length;
+document.getElementById('tc-pipe').textContent = PIPE.length;
+document.getElementById('foot').innerHTML =
+  'Source: <b>10FSSAC5 REO &amp; Pipeline.xlsx</b> (REO and Pipeline tabs), ' + esc(DATA.snapshotLabel.replace('As of ','')) + '. ' +
+  'Owned pins are geocoded to the street address. Pipeline pins with a dashed ring are placed at the city or market centroid, not the parcel. ' +
+  'Trade-area demographics are TractIQ ring pulls carried over from the pipeline workbook. Static snapshot — regenerate to update.';
+
+syncReoPills(); syncPipePills();
+renderReo(); renderPipe();
+document.querySelector('#r-table thead th[data-k="acq"]').classList.add('sorted');
+document.querySelector('#r-table thead th[data-k="acq"] .arw').textContent = '▼';
+document.querySelector('#p-table thead th[data-k="stageRank"]').classList.add('sorted');
+document.querySelector('#p-table thead th[data-k="stageRank"] .arw').textContent = '▼';
+</script>
+</body>
+</html>
